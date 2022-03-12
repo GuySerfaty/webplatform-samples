@@ -80,6 +80,8 @@
     padding: 0;
   }
 </style>
+<audio controls style="display: none;"></audio>
+<audio id="adioPlay" controls></audio>
 <h1 class="center" id="headline">
   <a href="http://dvcs.w3.org/hg/speech-api/raw-file/tip/speechapi.html">
     Web Speech API</a> Demonstration</h1>
@@ -346,22 +348,56 @@ function emailButton() {
   email_info.style.display = 'inline-block';
   showInfo('');
 }
-
+let playAudio = document.getElementById('adioPlay');
+let mediaRecorder;
 function startButton(event) {
   if (recognizing) {
+    mediaRecorder.stop();
     recognition.stop();
     return;
   }
-  final_transcript = '';
-  recognition.lang = select_dialect.value;
-  recognition.start();
-  ignore_onend = false;
-  final_span.innerHTML = '';
-  interim_span.innerHTML = '';
-  start_img.src = 'mic-slash.gif';
-  showInfo('info_allow');
-  showButtons('none');
-  start_timestamp = event.timeStamp;
+  let audioIN = { audio: true };
+  navigator.mediaDevices.getUserMedia(audioIN)
+  .then(function (mediaStreamObj) {
+    let audio = document.querySelector('audio');
+    if ("srcObject" in audio) {
+      audio.srcObject = mediaStreamObj;
+    }
+    else { // Old version
+      audio.src = window.URL
+        .createObjectURL(mediaStreamObj);
+    }
+    
+    mediaRecorder = new MediaRecorder(mediaStreamObj);
+    mediaRecorder.ondataavailable = function (ev) {
+      dataArray.push(ev.data);
+    }
+    let dataArray = [];
+
+    mediaRecorder.onstop = function (ev) {
+      let audioData = new Blob(dataArray,
+            { 'type': 'audio/mp3;' });
+      dataArray = [];
+
+      let audioSrc = window.URL
+        .createObjectURL(audioData);
+
+      playAudio.src = audioSrc;
+    }
+    mediaRecorder.start();
+
+    final_transcript = '';
+    recognition.lang = select_dialect.value;
+    recognition.start();
+    ignore_onend = false;
+    final_span.innerHTML = '';
+    interim_span.innerHTML = '';
+    start_img.src = 'mic-slash.gif';
+    showInfo('info_allow');
+    showButtons('none');
+    start_timestamp = event.timeStamp;
+  })
+
 }
 
 function showInfo(s) {
